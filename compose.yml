@@ -1,0 +1,34 @@
+services:
+  redis-master:
+    image: redis:8.2
+    restart: never
+    command: ["redis-server", "--appendonly", "yes", "--loglevel", "verbose"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  redis-replica:
+    image: redis:8.2
+    restart: never
+    depends_on:
+      - redis-master
+    command: ["redis-server", "--appendonly", "yes", "--replicaof", "redis-master", "6379", "--loglevel", "verbose"]
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data_replica:/data
+
+  readis:
+    image: hollodotme/readis:2.2
+    restart: never
+    depends_on:
+      - redis-master
+    ports:
+      - "8080:80"
+    volumes:
+      - ./readis:/code/config:Z
+
+volumes:
+  redis_data:
+  redis_data_replica:
