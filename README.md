@@ -1,3 +1,5 @@
+# Base de données Clés-Valeur
+
 > Une base de données Key-Value Store est le modèle le plus simple du paradigme NoSQL :
 > - Chaque donnée est enregistrée sous forme d’une paire clé → valeur.
 > - La clé est un identifiant unique (souvent une chaîne de caractères ou un hash).
@@ -85,6 +87,16 @@ Il est possible de désactiver complètement la persistance (pas de RDB, pas d�
 
 Les données sont perdues au redémarrage.
 
+### L'environnement
+
+L'environnement Docker est composé de 2 serveurs Redis : Un serveur maître et un autre pour la réplication de données.
+
+Pour accéder au client Redis il faut exécuter la commande suivante.
+
+```shell
+docker exec -it nosql-kv_redis-master_1 redis-cli
+```
+
 ### Les commandes
 
 #### Opérations classiques
@@ -138,9 +150,132 @@ TTL username
 DEL username
 ```
 
-Ajouts multiples
+**Ajouts multiples**
+
+Il faut utiliserles commandes `MSET` et `MGET`
 
 
-```shell
-docker exec -it nosql-kv_redis-master_1 redis-cli
+```
+MSET clef1 valeur1 clef2 valeur2
+MGET clef1 clef2
+```
+
+**Incréments**
+
+```
+INCR visites
+DECR visites
+INCRBY visites 5
+DECRBY visites 5f
+```
+
+### Listes
+
+une liste est une structure de données ordonnée qui fonctionne comme une chaîne de valeurs (similaire à une file ou une pile). Chaque élément est une chaîne de caractères.
+
+- Une liste Redis est ordonnée par l’ordre d’insertion.
+- On peut y ajouter ou retirer des éléments au début (gauche) ou à la fin (droite).
+- On peut accéder à une portion de la liste ou à des éléments précis par index.
+- Redis stocke les listes en mémoire de façon compacte et efficace.
+
+```
+LPUSH clef value1 value2 → ajoute un ou plusieurs éléments au début de la liste.
+RPUSH clef value1 value2 → ajoute un ou plusieurs éléments à la fin.
+```
+
+Retirer des éléments
+
+```
+LPOP clef → retire et renvoie le premier élément (gauche).
+RPOP clef → retire et renvoie le dernier élément (droite).
+```
+
+Lire des élements
+
+```
+LRANGE key start stop → renvoie une portion de la liste (indices inclusifs).
+LINDEX key index → lit l’élément à un index donné (0 = premier).
+LLEN key → renvoie la taille de la liste.
+```
+
+
+BLPOP et BRPOP → comme LPOP/RPOP, mais bloque en attente si la liste est vide (très utilisé pour faire une file de tâches).
+Cas d’usage typiques
+
+File de messages / tâches
+
+On RPUSH les tâches en file.
+
+Des workers font un BLPOP pour traiter en FIFO.
+
+Historique récent (exemple : logs ou recherches)
+
+On LPUSH les nouvelles entrées.
+
+On garde une taille fixe avec LTRIM (par ex. les 100 dernières actions).
+
+Pile (stack)
+
+Avec LPUSH pour empiler et LPOP pour dépiler → LIFO.
+
+### Géospatial
+
+```
+GEOADD users 6.9362167 48.2899648 "Bernard" 6.943951 48.2891368 "Lenina" 6.9484328 48.2866295 "Mustafa" 6.9621793 48.2956319 "Helmholtz" 6.9685052 48.2967651 "Linda" 6.94559 48.2684914 "Winston" 6.9965543 48.2867593 "Julia" 6.9351951 48.3127686 "O'Brien"
+```
+
+GEODIST users Alice Bob km
+
+GEORADIUS users 4.8357 45.7640 300 km WITHDIST
+
+GEOPOS users Alice
+
+GEOHASH users Alice
+
+GEORADIUS users 6.9491129 48.2846556 1 KM
+
+GEORADIUSBYMEMBER users Bernard 1 KM
+
+GEOSEARCH users:geo FROMLONLAT 6.9491129 48.2846556 BYRADIUS 1500 m ASC COUNT 3
+
+### Hashs
+
+HSET user:1 name "Alice" age 30
+
+HGET user:1 name
+
+HGETALL user:1
+
+### Sets
+
+SADD tags redis database nosql
+
+SMEMBERS tags
+
+SISMEMBER tags "nosql"
+
+### Sorted Sets
+
+ZADD leaderboard 100 "Alice"
+
+ZADD leaderboard 200 "Bob"
+
+ZRANGE leaderboard 0 -1 WITHSCORES
+
+### JSON
+
+JSON.SET user:1 $ '{"id":1,"name":"Alice","age":30,"skills":["redis","docker"]}'
+JSON.GET user:1 $.name
+JSON.SET user:1 $.age 31
+JSON.ARRAPPEND user:1 $.skills '"nosql"'
+JSON.DEL user:1 $.age
+
+### Transactions
+
+```
+MULTI
+SET balance 100
+INCR balance
+DECR balance
+EXEC
 ```

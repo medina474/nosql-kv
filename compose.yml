@@ -2,7 +2,7 @@ services:
   redis-master:
     image: redis:8.2
     restart: never
-    command: ["redis-server", "--appendonly", "yes", "--loglevel", "verbose"]
+    command: ["redis-server", "--loglevel", "verbose"]
     ports:
       - "6379:6379"
     volumes:
@@ -13,7 +13,7 @@ services:
     restart: never
     depends_on:
       - redis-master
-    command: ["redis-server", "--appendonly", "yes", "--replicaof", "redis-master", "6379", "--loglevel", "verbose"]
+    command: ["redis-server", "--replicaof", "redis-master", "6379", "--loglevel", "verbose"]
     ports:
       - "6380:6379"
     volumes:
