@@ -19,7 +19,7 @@ Elles sont vues comme des tables de hachage persistantes et distribuées.
 
 - Cache en mémoire : accélération des performances d’applications,
 - Sessions utilisateur : stockage temporaire des informations de connexion,
-- Courtier de messages : stocke des messages et notifications,
+- Courtier de messages : stocke des messages et des notifications,
 
 ### Solutions
 
@@ -89,9 +89,9 @@ Les données sont perdues au redémarrage.
 
 ### L'environnement
 
-L'environnement Docker est composé de 2 serveurs Redis : Un serveur maître et un autre pour la réplication de données.
+L'environnement Docker est composé de 2 serveurs Redis : Un serveur maître (redis-master) et un autre pour la réplication de données (redis-replica).
 
-Pour accéder au client Redis il faut exécuter la commande suivante.
+Pour accéder au client Redis en ligne de commande, il faut exécuter la commande suivante, sur l'un ou l'autre des serveurs. Attention le serveur de réplication n'autorise que la lecture. Les modifications sont faites sur le serveur master.
 
 ```shell
 docker exec -it nosql-kv_redis-master_1 redis-cli
@@ -101,10 +101,12 @@ docker exec -it nosql-kv_redis-master_1 redis-cli
 
 #### Opérations classiques
 
-*Ajouter une clé*. Les clés comme les valeurs peuvent contenir des caractères spéciaux.
+##### Ajouter une clé
+
+Les clés comme les valeurs peuvent contenir des caractères spéciaux. Si la valeur contient des espaces il faut l'entourer de guillements.
 
 ```
-SET username "Alice"
+SET username "Albert Einstein"
 ```
 
 Il est possible de définir une condition d'insertion
@@ -117,7 +119,7 @@ Il est possible de définir une durée de vie à notre clé
 - KEEPTTL : lors d'une mise à jour, garde la durée de vie précedemment définie
 
 ```
-SET username "Alice" XX EX 10
+SET username "Albert" XX EX 10
 ```
 
 Le nommage des clés a son importance. Si Redis ne fixe aucune contrainte, des conventions largement acceptées et utilisées ont été adoptée par la communauté.
@@ -152,7 +154,7 @@ DEL username
 
 **Ajouts multiples**
 
-Il faut utiliserles commandes `MSET` et `MGET`
+Il faut utiliser les commandes `MSET` et `MGET`
 
 
 ```
@@ -163,6 +165,7 @@ MGET clef1 clef2
 **Incréments**
 
 ```
+SET visites 1000
 INCR visites
 DECR visites
 INCRBY visites 5
@@ -179,44 +182,39 @@ une liste est une structure de données ordonnée qui fonctionne comme une chaî
 - Redis stocke les listes en mémoire de façon compacte et efficace.
 
 ```
-LPUSH clef value1 value2 → ajoute un ou plusieurs éléments au début de la liste.
-RPUSH clef value1 value2 → ajoute un ou plusieurs éléments à la fin.
+LPUSH nobel Einstein → ajoute un ou plusieurs éléments au début de la liste.
+LPUSH nobel Marconi → ajoute un ou plusieurs éléments au début de la liste.
+RPUSH nobel Becquerel Plank → ajoute un ou plusieurs éléments à la fin.
 ```
 
-Retirer des éléments
+#### Lire des élements
 
 ```
-LPOP clef → retire et renvoie le premier élément (gauche).
-RPOP clef → retire et renvoie le dernier élément (droite).
+LLEN nobel → renvoie la taille de la liste.
+LINDEX nobel 3 → lit l’élément à un index donné (0 = premier).
+LRANGE nobel 1 2 → renvoie une portion de la liste (indices inclusifs, -1 signifie jusqu'à la fin).
 ```
 
-Lire des élements
+#### Retirer des éléments
 
 ```
-LRANGE key start stop → renvoie une portion de la liste (indices inclusifs).
-LINDEX key index → lit l’élément à un index donné (0 = premier).
-LLEN key → renvoie la taille de la liste.
+LREM nobel 1 2 → Supprime des éléments
+LPOP nobel → retire et renvoie le premier élément (gauche).
+RPOP nobel → retire et renvoie le dernier élément (droite).
 ```
 
+BLPOP et BRPOP sont des variantes qui bloquent en attente si la liste est vide (très utilisé pour faire une file de tâches).
 
-BLPOP et BRPOP → comme LPOP/RPOP, mais bloque en attente si la liste est vide (très utilisé pour faire une file de tâches).
-Cas d’usage typiques
+#### Cas d’usage typiques
 
-File de messages / tâches
-
-On RPUSH les tâches en file.
-
-Des workers font un BLPOP pour traiter en FIFO.
-
-Historique récent (exemple : logs ou recherches)
-
-On LPUSH les nouvelles entrées.
-
-On garde une taille fixe avec LTRIM (par ex. les 100 dernières actions).
-
-Pile (stack)
-
-Avec LPUSH pour empiler et LPOP pour dépiler → LIFO.
+- File de messages (FIFO)
+  - Les tâches sont ajouter dans la file d'attente avec RPUSH.
+  - Des workers font un BLPOP pour traiter en FIFO.
+- Historique récent (exemple : logs ou recherches)
+  - LPUSH les nouvelles entrées.
+  - On garde une taille fixe avec LTRIM (par ex. les 100 dernières actions).
+- Pile (LIFO)
+  - Avec LPUSH pour empiler et LPOP pour dépiler.
 
 ### Géospatial
 
@@ -240,7 +238,9 @@ GEOSEARCH users:geo FROMLONLAT 6.9491129 48.2846556 BYRADIUS 1500 m ASC COUNT 3
 
 ### Hashs
 
-HSET user:1 name "Alice" age 30
+Les Hash sont des objets clés/valeurs
+
+HSET user:1 name "Albert" age 30
 
 HGET user:1 name
 
@@ -248,11 +248,45 @@ HGETALL user:1
 
 ### Sets
 
+Les Sets sont des ensembles sans doublon. Ils permettent de stocker plusieurs valeurs.Les éléments des Sets sont appelés des membres.
+
+#### Ajouter des membres
+
+```
 SADD tags redis database nosql
+```
 
+#### Cardinalité (nombre de membres)
+
+```
+SCARD tags
+```
+
+#### Lister les membres
+
+```
 SMEMBERS tags
+```
 
+#### Retirer un membre
+
+```
+SREM tags
+```
+
+#### Tester si un membre fait partie de l'ensemble
+
+```
 SISMEMBER tags "nosql"
+```
+
+Les Sets obéissent à la théorie des ensembles il est donc possible de combiner les ensembles entre eux.
+
+SDIFF
+
+SINTER
+
+SUNION
 
 ### Sorted Sets
 
@@ -260,7 +294,7 @@ ZADD leaderboard 100 "Alice"
 
 ZADD leaderboard 200 "Bob"
 
-ZRANGE leaderboard 0 -1 WITHSCORES
+ZRANGE leaderboard 0 -1 WITHSCORES REV
 
 ### JSON
 
