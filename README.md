@@ -187,7 +187,7 @@ LPUSH nobel Marconi → ajoute un ou plusieurs éléments au début de la liste.
 RPUSH nobel Becquerel Plank → ajoute un ou plusieurs éléments à la fin.
 ```
 
-#### Lire des élements
+#### Lire des élements
 
 ```
 LLEN nobel → renvoie la taille de la liste.
@@ -313,3 +313,13 @@ INCR balance
 DECR balance
 EXEC
 ```
+
+### Publication
+
+Dans un premier terminal (abonné) :
+
+SUBSCRIBE news
+
+Dans un autre terminal (éditeur) :
+
+PUBLISH news "Bonjour"
